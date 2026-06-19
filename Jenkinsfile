@@ -5,6 +5,10 @@ pipeline {
         maven 'Maven3'
     }
 
+    options {
+        timestamps()
+    }
+
     environment {
         TOMCAT_USER = 'ec2-user'
         TOMCAT_HOST = '172.31.91.169'
@@ -15,31 +19,43 @@ pipeline {
 
         stage('Checkout') {
             steps {
+                echo 'Checking out source code...'
                 checkout scm
             }
         }
 
         stage('Build') {
             steps {
-                sh 'mvn clean clean package'
+                echo 'Building WAR file...'
+                sh 'mvn clean package'
             }
         }
 
-        stage('Deploy') {
+        stage('Verify Artifact') {
+            steps {
+                echo 'Verifying generated WAR file...'
+                sh 'ls -lh target/'
+            }
+        }
+
+        stage('Deploy to Tomcat') {
             steps {
                 sh '''
-                echo "Deploying WAR to Tomcat..."
+                echo "Removing previous deployment..."
 
                 ssh -o StrictHostKeyChecking=no ${TOMCAT_USER}@${TOMCAT_HOST} "
                     rm -rf ${TOMCAT_HOME}/webapps/MyApp
                     rm -f ${TOMCAT_HOME}/webapps/MyApp.war
                 "
 
+                echo "Copying WAR file to Tomcat server..."
+
                 scp -o StrictHostKeyChecking=no \
                 target/MyApp.war \
                 ${TOMCAT_USER}@${TOMCAT_HOST}:${TOMCAT_HOME}/webapps/
 
-                echo "Deployment completed."
+                echo "Waiting for Tomcat auto deployment..."
+                sleep 10
                 '''
             }
         }
@@ -48,7 +64,12 @@ pipeline {
             steps {
                 sh '''
                 ssh -o StrictHostKeyChecking=no ${TOMCAT_USER}@${TOMCAT_HOST} "
+                    echo '===== WEBAPPS DIRECTORY ====='
                     ls -lh ${TOMCAT_HOME}/webapps
+
+                    echo ''
+                    echo '===== VERIFY APPLICATION ====='
+                    test -d ${TOMCAT_HOME}/webapps/MyApp
                 "
                 '''
             }
@@ -56,15 +77,26 @@ pipeline {
     }
 
     post {
+
         success {
-            echo '================================='
-            echo ' CI/CD Pipeline Executed Successfully!'
-            echo ' WAR File Built and Deployed'
-            echo '================================='
+            echo '========================================'
+            echo 'CI/CD PIPELINE COMPLETED SUCCESSFULLY'
+            echo 'Application deployed to Tomcat Server'
+            echo 'Tomcat Host: 172.31.91.169'
+            echo 'Application URL:'
+            echo 'http://172.31.91.169:8080/MyApp/'
+            echo '========================================'
         }
 
         failure {
-            echo ' Pipeline Failed!'
+            echo '========================================'
+            echo 'CI/CD PIPELINE FAILED'
+            echo 'Check Console Output for errors.'
+            echo '========================================'
+        }
+
+        always {
+            cleanWs()
         }
     }
 }
