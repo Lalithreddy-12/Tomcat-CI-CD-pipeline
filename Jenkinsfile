@@ -11,7 +11,7 @@ pipeline {
 
     environment {
         TOMCAT_USER = 'ec2-user'
-        TOMCAT_HOST = '172.31.91.169'
+        TOMCAT_HOST = 'http://3.94.201.155/'
         TOMCAT_HOME = '/home/ec2-user/apache'
     }
 
@@ -82,9 +82,9 @@ pipeline {
             echo '========================================'
             echo 'CI/CD PIPELINE COMPLETED SUCCESSFULLY'
             echo 'Application deployed to Tomcat Server'
-            echo 'Tomcat Host: 172.31.91.169'
+            echo 'Tomcat Host: http://3.94.201.155'
             echo 'Application URL:'
-            echo 'http://172.31.91.169:8080/MyApp/'
+            echo 'http://3.94.201.155/MyApp/'
             echo '========================================'
         }
 
